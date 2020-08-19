@@ -1,4 +1,14 @@
 def changeMarkToStr(scanFilePath, n_col, n_row):
+    """マークシートの読み取り、結果をFalse,Trueの2次元配列で返す
+
+    Args:
+        scanFilePath (String): マークシート形式を含むJPEGファイルのパス
+        n_col (int): 選択肢の数(列数)
+        n_row (int): 設問の数(行数)
+
+    Returns:
+        list: マークシートの読み取った結果　False,Trueの2次元配列
+    """
     ### n_col = 6 # 1行あたりのマークの数
     ### n_row = 9 # マークの行数
     import numpy as np
