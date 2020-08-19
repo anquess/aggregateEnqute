@@ -36,12 +36,20 @@ def changeMarkToStr(scanFilePath, n_col, n_row):
     loc = np.where( res >= threshold)
 
     mark_area={}
-    mark_area['top_x']= min(loc[1])
-    mark_area['top_y']= min(loc[0])
-    mark_area['bottom_x']= max(loc[1])
-    mark_area['bottom_y']= max(loc[0])
 
-    img = img[mark_area['top_y']:mark_area['bottom_y'],mark_area['top_x']:mark_area['bottom_x']]
+    try:
+        mark_area['top_x']= min(loc[1])
+        mark_area['top_y']= min(loc[0])
+        mark_area['bottom_x']= max(loc[1])
+        mark_area['bottom_y']= max(loc[0])
+        img = img[mark_area['top_y']:mark_area['bottom_y'],mark_area['top_x']:mark_area['bottom_x']]
+    except ValueError as identifier:
+        print("値がおかしいです: {}".format(identifier))
+        return 'error'
+    except KeyError as identifier:
+        print("キーが間違っています: {}".format(identifier))
+        return 'error'
+    
 
     # 若干左に空白ができていますが，これぐらいなら問題ありません。
     # 次に，この後の処理をしやすくするため，切り出した画像をマークの
