@@ -22,7 +22,7 @@ def changeMarkToStr(scanFilePath, n_col, n_row):
 
     res = cv2.matchTemplate(img, marker, cv2.TM_CCOEFF_NORMED)
 
-    threshold = 0.6
+    threshold = 0.7
     loc = np.where( res >= threshold)
 
     mark_area={}

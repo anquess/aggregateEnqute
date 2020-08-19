@@ -6,9 +6,15 @@ import qrCodeRead
 
 resultJpgFiles = glob.glob('img/enquete/*.jpg')
 for resultJpgFile in resultJpgFiles:
-    outputCsvFile = open('result/' + qrCodeRead.qrCodeToStr(resultJpgFile) + '.csv', 'w',newline="")
-    writer = csv.writer(outputCsvFile)
-    
-    resultLine = changeMark.changeMarkToStr(resultJpgFile,6,9)
-    writer.writerows(resultLine)
-outputCsvFile.close()
+    csvFileName = qrCodeRead.qrCodeToStr(resultJpgFile)
+    if not csvFileName == "":
+        outputCsvFile = open('result/' + csvFileName + '.csv', 'w',newline="")
+        writer = csv.writer(outputCsvFile)
+        n_col = int(csvFileName.split('_')[4])
+        n_row = int(csvFileName.split('_')[5])
+        print(csvFileName)
+        print('n_col' + str(n_col))
+        print('n_row' + str(n_row))
+        resultLine = changeMark.changeMarkToStr(resultJpgFile,n_col,n_row)
+        writer.writerows(resultLine)
+        outputCsvFile.close()
