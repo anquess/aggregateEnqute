@@ -18,6 +18,9 @@ def main():
             resultLine = changeMark.changeMarkToStr(resultJpgFile,n_col,n_row)
             writer.writerows(resultLine)
             outputCsvFile.close()
+        else:
+            with open('result/err.txt','w+',newline="") as errTxt:
+                errTxt.write('err:QRコードが読めなかった,    FileName=',resultJpgFile)
 
 if __name__ =='__main__':
     main()
