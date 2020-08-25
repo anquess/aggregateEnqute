@@ -1,11 +1,9 @@
 def changeMarkToStr(scanFilePath, n_col, n_row):
     """マークシートの読み取り、結果をFalse,Trueの2次元配列で返す
-
     Args:
         scanFilePath (String): マークシート形式を含むJPEGファイルのパス
         n_col (int): 選択肢の数(列数)
         n_row (int): 設問の数(行数)
-
     Returns:
         list: マークシートの読み取った結果　False,Trueの2次元配列
     """
@@ -50,8 +48,6 @@ def changeMarkToStr(scanFilePath, n_col, n_row):
         print("キーが間違っています: {}".format(identifier))
         return 'error'
     
-
-    # 若干左に空白ができていますが，これぐらいなら問題ありません。
     # 次に，この後の処理をしやすくするため，切り出した画像をマークの
     # 列数・行数の整数倍のサイズになるようリサイズします。
     # ここでは，列数・行数の100倍にしています。
@@ -60,7 +56,7 @@ def changeMarkToStr(scanFilePath, n_col, n_row):
     margin_top = 1 # 上余白行数
     margin_bottom = 0 # 下余白行数
 
-    n_row = n_row + margin_top + margin_bottom # 行数 (マーク行 7行 + 上余白 3行 + 下余白 1行)
+    n_row = n_row + margin_top + margin_bottom
 
     img = cv2.resize(img, (n_col*100, n_row*100))
 
@@ -97,3 +93,22 @@ def changeMarkToStr(scanFilePath, n_col, n_row):
         result.append(area_sum > np.median(area_sum) * 3)
 
     return result
+
+if __name__ == '__main__':
+    import sys
+    import os
+
+    args = sys.argv
+    if 3 == len(args):
+        if (os.path.isfile(args[1]) and args[1][len(args[1])-4:] == '.jpg'):
+            if ( len(args[2].split('_')) == 5 and args[2].split('_')[4].isdigit() and args[2].split('_')[5].isdigit()):
+                n_col = int(args[2].split('_')[4])
+                n_row = int(args[2].split('_')[5])
+                changeMarkToStr(args[1],n_col,n_row)
+            else:
+                print('[ERROR]QRコードメッセージがおかしいです：' + args[2])
+
+        elif args[1][len(args[1])-4:] == '.jpg':
+            print('[ERROR]' + args[1] + 'JPEGファイルを指定してください')
+        else:
+            print('[ERROR]' + args[1] + 'というファイルはありません')
