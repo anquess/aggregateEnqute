@@ -8,7 +8,7 @@ def main():
     for resultJpgFile in resultJpgFiles:
         csvFileName = qrCodeRead.qrCodeToStr(resultJpgFile)
         if not csvFileName == "":
-            outputCsvFile = open('result/' + csvFileName + '.csv', 'w',newline="")
+            outputCsvFile = open('result/' + csvFileName + '.csv',mode='w',newline="")
             writer = csv.writer(outputCsvFile)
             n_col = int(csvFileName.split('_')[4])
             n_row = int(csvFileName.split('_')[5])
@@ -20,10 +20,10 @@ def main():
                 writer.writerows(resultLine)
                 outputCsvFile.close()
             else:
-                with open('result/err.txt','r+',newline="") as errTxt:
+                with open('result/err.txt',mode='a',newline="") as errTxt:
                     errTxt.write('err:マークシートが読めなかった,    FileName=' + resultJpgFile)
         else:
-            with open('result/err.txt','r+',newline="") as errTxt:
+            with open('result/err.txt',mode='a',newline="") as errTxt:
                 errTxt.write('err:QRコードが読めなかった,    FileName=' + resultJpgFile)
 
 if __name__ =='__main__':
