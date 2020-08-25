@@ -23,11 +23,10 @@ def qrCodeToStr(filePath):
 if __name__ == '__main__':
     args = sys.argv
     if 2 == len(args):
-        if os.path.isfile(args[1]):
-            if right(args[1],4) == '.jpg':
-                qrCodeToStr(args[1])
-            else:
-                print('[ERROR]' + args[1] + 'JPEGファイルを指定してください')
+        if (os.path.isfile(args[1]) and args[1][len(args[1])-4:] == '.jpg'):
+            qrCodeToStr(args[1])
+        elif args[1][len(args[1])-4:] == '.jpg':
+            print('[ERROR]' + args[1] + 'JPEGファイルを指定してください')
         else:
             print('[ERROR]' + args[1] + 'というファイルはありません')
     else:
