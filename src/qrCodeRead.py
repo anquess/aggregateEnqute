@@ -2,10 +2,8 @@ import sys
 import os
 def qrCodeToStr(filePath):
     """QRコードから文字列を読み取る
-
     Args:
         filePath (String): QRコードを含む画像ファイルのパス
-
     Returns:
         String: QRコードを読み取った結果(失敗したnullString)
     """
@@ -15,15 +13,22 @@ def qrCodeToStr(filePath):
     # QRコードデコード
     qr = cv2.QRCodeDetector()
     data,_,_ = qr.detectAndDecode(img)
-    print(data)
+
+    if data == '':
+        print('[ERROR]' + filePath + 'からQRコードが見つかりませんでした')
+    else:
+        print(data)
     return data
 
 if __name__ == '__main__':
     args = sys.argv
     if 2 == len(args):
         if os.path.isfile(args[1]):
-            qrCodeToStr(args[1])
+            if right(args[1],4) == '.jpg':
+                qrCodeToStr(args[1])
+            else:
+                print('[ERROR]' + args[1] + 'JPEGファイルを指定してください')
         else:
-            print(args[1] + 'というファイルはありません')
+            print('[ERROR]' + args[1] + 'というファイルはありません')
     else:
-        print(args + '引数は1つです')
+        print('[ERROR]' + args + '引数は1つです')
