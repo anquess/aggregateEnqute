@@ -7,13 +7,10 @@ def qrCodeToStr(filePath):
     Returns:
         String: QRコードを読み取った結果(失敗したnullString)
     """
-    import qrcode
-    import numpy as np
     import cv2
 
     img = cv2.imread(filePath, cv2.IMREAD_GRAYSCALE)
     # QRコードデコード
     qr = cv2.QRCodeDetector()
-
-    data, points, straight_qrcode = qr.detectAndDecode(img)
+    data,_,_ = qr.detectAndDecode(img)
     return data
