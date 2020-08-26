@@ -30,4 +30,4 @@ if __name__ == '__main__':
         else:
             print('[ERROR]' + args[1] + 'というファイルはありません')
     else:
-        print('[ERROR]' + args + '引数は1つです')
+        print('[ERROR]引数は1つです')
