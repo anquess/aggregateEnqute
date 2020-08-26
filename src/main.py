@@ -13,8 +13,8 @@ def main():
             n_col = int(csvFileName.split('_')[4])
             n_row = int(csvFileName.split('_')[5])
 
-            print('n_col' + str(n_col))
-            print('n_row' + str(n_row))
+#            print('n_col' + str(n_col))
+#            print('n_row' + str(n_row))
             resultLine = changeMark.changeMarkToStr(resultJpgFile,n_col,n_row)
             if not resultLine == 'error':
                 writer.writerows(resultLine)
