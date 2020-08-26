@@ -30,14 +30,20 @@ def changeMarkToStr(scanFilePath, n_col, n_row):
 
     res = cv2.matchTemplate(img, marker, cv2.TM_CCOEFF_NORMED)
 
-    ## makerの3点から抜き出すのを繰り返す
-    
-    for threshold in [0.8, 0.75, 0.7, 0.65, 0.6, 0.55, 0.5]:
+    ## makerの3点から抜き出すのを繰り返す 抜き出すときの条件は以下の通り
+    margin_top = 1 # 上余白行数
+    margin_bottom = 0 # 下余白行数
+    singleRow = 125 # 1行当たりの高さ
+    singleCol = 70 # 1列当たりの幅
+    maxMarginRow = (n_row + margin_top + margin_bottom + 1) * singleRow
+    minMarginRow = (n_row - 1) * singleRow
+    maxMarginCol = (n_col + 1) * singleCol
+    minMarginCol = (n_col - 1) * singleCol
+
+    for threshold in [0.8, 0.75, 0.7, 0.65, 0.6, 0.55, 0.5, 0.45]:
     
         loc = np.where( res >= threshold)
-
         mark_area={}
-
         try:
             mark_area['top_x']= min(loc[1])
             mark_area['top_y']= min(loc[0])
@@ -47,7 +53,8 @@ def changeMarkToStr(scanFilePath, n_col, n_row):
             ySize =mark_area['bottom_y']-mark_area['top_y']
 #            print('x=' + str(xSize))
 #            print('y=' + str(ySize))
-            if ((n_col -1 ) * 70 < xSize and (n_col + 1) * 70 > xSize and (n_row) * 125 < ySize and (n_row + 2) * 120 > ySize):
+            if (minMarginCol < xSize and maxMarginCol > xSize and minMarginRow < ySize and maxMarginRow > ySize):
+#                print('threshold=' + str(threshold))
                 img = img[mark_area['top_y']:mark_area['bottom_y'],mark_area['top_x']:mark_area['bottom_x']]
                 break
         except ValueError as identifier:
@@ -62,8 +69,6 @@ def changeMarkToStr(scanFilePath, n_col, n_row):
     # ここでは，列数・行数の100倍にしています。
     # なお，行数をカウントする際には，マーク領域からマーカーまでの余白も考慮した行数にします。
 
-    margin_top = 1 # 上余白行数
-    margin_bottom = 0 # 下余白行数
 
     n_row = n_row + margin_top + margin_bottom
 
