@@ -121,7 +121,7 @@ if __name__ == '__main__':
     args = sys.argv
     if 3 == len(args):
         if (os.path.isfile(args[1]) and args[1][len(args[1])-4:] == '.jpg'):
-            if ( len(args[2].split('_')) == 5 and args[2].split('_')[4].isdigit() and args[2].split('_')[5].isdigit()):
+            if ( len(args[2].split('_')) == 6 and args[2].split('_')[4].isdigit() and args[2].split('_')[5].isdigit()):
                 n_col = int(args[2].split('_')[4])
                 n_row = int(args[2].split('_')[5])
                 changeMarkToStr(args[1],n_col,n_row)
