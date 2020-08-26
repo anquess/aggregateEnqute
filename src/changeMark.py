@@ -33,45 +33,41 @@ def changeMarkToStr(scanFilePath, n_col, n_row):
     ## makerの3点から抜き出すのを繰り返す 抜き出すときの条件は以下の通り
     margin_top = 1 # 上余白行数
     margin_bottom = 0 # 下余白行数
-    singleRow = 125 # 1行当たりの高さ
-    singleCol = 70 # 1列当たりの幅
-    maxMarginRow = (n_row + margin_top + margin_bottom + 1) * singleRow
-    minMarginRow = (n_row - 1) * singleRow
-    maxMarginCol = (n_col + 1) * singleCol
-    minMarginCol = (n_col - 1) * singleCol
-
+ 
     for threshold in [0.8, 0.75, 0.7, 0.65, 0.6, 0.55, 0.5, 0.45]:
     
         loc = np.where( res >= threshold)
         mark_area={}
         try:
-            mark_area['top_x']= min(loc[1])
-            mark_area['top_y']= min(loc[0])
-            mark_area['bottom_x']= max(loc[1])
-            mark_area['bottom_y']= max(loc[0])
-            xSize = mark_area['bottom_x']-mark_area['top_x']
-            ySize =mark_area['bottom_y']-mark_area['top_y']
-#            print('x=' + str(xSize))
-#            print('y=' + str(ySize))
-            if (minMarginCol < xSize and maxMarginCol > xSize and minMarginRow < ySize and maxMarginRow > ySize):
+            mark_area['top_x']= sorted(loc[1])[0]
+            mark_area['top_y']= sorted(loc[0])[0]
+            mark_area['bottom_x']= sorted(loc[1])[-1]
+            mark_area['bottom_y']= sorted(loc[0])[-1]
+
+            topX_error = sorted(loc[1])[1] - sorted(loc[1])[0]
+            bottomX_error = sorted(loc[1])[-1] - sorted(loc[1])[-2]
+            topY_error = sorted(loc[0])[1] - sorted(loc[0])[0]
+            bottomY_error = sorted(loc[0])[-1] - sorted(loc[0])[-2]
+
+#            print('top_x=' + str(topX_error))
+#            print('bottom_x=' + str(bottomX_error))
+#            print('top_y=' + str(topY_error))
+#            print('bottom_y=' + str(bottomY_error))
+            if (topX_error < 5 and bottomX_error < 5 and topY_error < 5 and bottomY_error < 5):
 #                print('threshold=' + str(threshold))
                 img = img[mark_area['top_y']:mark_area['bottom_y'],mark_area['top_x']:mark_area['bottom_x']]
                 break
         except ValueError as identifier:
-            print("値がおかしいです: {}".format(identifier))
-            return 'error'
+            continue
         except KeyError as identifier:
-            print("キーが間違っています: {}".format(identifier))
-            return 'error'
-    
+            continue
+
     # 次に，この後の処理をしやすくするため，切り出した画像をマークの
     # 列数・行数の整数倍のサイズになるようリサイズします。
     # ここでは，列数・行数の100倍にしています。
     # なお，行数をカウントする際には，マーク領域からマーカーまでの余白も考慮した行数にします。
 
-
     n_row = n_row + margin_top + margin_bottom
-
     img = cv2.resize(img, (n_col*100, n_row*100))
 
     ### ブラーをかける
@@ -105,6 +101,17 @@ def changeMarkToStr(scanFilePath, n_col, n_row):
         ### 画像領域の合計値が，中央値の3倍以上かどうかで判断
         result.append(area_sum > np.median(area_sum) * 3)
 
+    for x in range(len(result)):
+        res = np.where(result[x]==True)[0]+1
+        if len(res)>1:
+#            print('Q%d: ' % (x+1) +str(res)+ ' ## 複数回答 ##')
+            print(str(res)+ ' ## 複数回答 ##')
+        elif len(res)==1:
+#            print('Q%d: ' % (x+1) +str(res))
+            print(str(res))
+        else:
+ #           print('Q%d: ** 未回答 **' % (x+1))
+            print('** 未回答 **')
     return result
 
 if __name__ == '__main__':
