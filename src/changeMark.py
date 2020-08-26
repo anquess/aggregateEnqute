@@ -30,23 +30,32 @@ def changeMarkToStr(scanFilePath, n_col, n_row):
 
     res = cv2.matchTemplate(img, marker, cv2.TM_CCOEFF_NORMED)
 
-    threshold = 0.65
-    loc = np.where( res >= threshold)
+    ## makerの3点から抜き出すのを繰り返す
+    
+    for threshold in [0.8, 0.75, 0.7, 0.65, 0.6, 0.55, 0.5]:
+    
+        loc = np.where( res >= threshold)
 
-    mark_area={}
+        mark_area={}
 
-    try:
-        mark_area['top_x']= min(loc[1])
-        mark_area['top_y']= min(loc[0])
-        mark_area['bottom_x']= max(loc[1])
-        mark_area['bottom_y']= max(loc[0])
-        img = img[mark_area['top_y']:mark_area['bottom_y'],mark_area['top_x']:mark_area['bottom_x']]
-    except ValueError as identifier:
-        print("値がおかしいです: {}".format(identifier))
-        return 'error'
-    except KeyError as identifier:
-        print("キーが間違っています: {}".format(identifier))
-        return 'error'
+        try:
+            mark_area['top_x']= min(loc[1])
+            mark_area['top_y']= min(loc[0])
+            mark_area['bottom_x']= max(loc[1])
+            mark_area['bottom_y']= max(loc[0])
+            xSize = mark_area['bottom_x']-mark_area['top_x']
+            ySize =mark_area['bottom_y']-mark_area['top_y']
+#            print('x=' + str(xSize))
+#            print('y=' + str(ySize))
+            if ((n_col -1 ) * 70 < xSize and (n_col + 1) * 70 > xSize and (n_row) * 125 < ySize and (n_row + 2) * 120 > ySize):
+                img = img[mark_area['top_y']:mark_area['bottom_y'],mark_area['top_x']:mark_area['bottom_x']]
+                break
+        except ValueError as identifier:
+            print("値がおかしいです: {}".format(identifier))
+            return 'error'
+        except KeyError as identifier:
+            print("キーが間違っています: {}".format(identifier))
+            return 'error'
     
     # 次に，この後の処理をしやすくするため，切り出した画像をマークの
     # 列数・行数の整数倍のサイズになるようリサイズします。
@@ -68,7 +77,6 @@ def changeMarkToStr(scanFilePath, n_col, n_row):
 
     ### 白黒反転
     img = 255 - img
-
     cv2.imwrite('img/res.png',img)
 
     # マークの認識
