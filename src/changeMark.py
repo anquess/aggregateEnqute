@@ -1,4 +1,4 @@
-def changeMarkToStr(scanFilePath, n_col, n_row):
+def changeMarkToStr(scanFilePath, n_col, n_row, message):
     """マークシートの読み取り、結果をFalse,Trueの2次元配列で返す
     Args:
         scanFilePath (String): マークシート形式を含むJPEGファイルのパス
@@ -100,18 +100,23 @@ def changeMarkToStr(scanFilePath, n_col, n_row):
 
         ### 画像領域の合計値が，中央値の3倍以上かどうかで判断
         result.append(area_sum > np.median(area_sum) * 3)
-
+#    print(message, end=',')
     for x in range(len(result)):
         res = np.where(result[x]==True)[0]+1
         if len(res)>1:
 #            print('Q%d: ' % (x+1) +str(res)+ ' ## 複数回答 ##')
-            print(str(res)+ ' ## 複数回答 ##')
+            message.append(' ## 複数回答 ##')
+#            print(str(res) + ' ## 複数回答 ##', end=',')
         elif len(res)==1:
 #            print('Q%d: ' % (x+1) +str(res))
-            print(str(res))
+            message.append(res[0])
+#            print(str(res) , end=',')
         else:
- #           print('Q%d: ** 未回答 **' % (x+1))
-            print('** 未回答 **')
+#            print('Q%d: ** 未回答 **' % (x+1))
+            message.append('** 未回答 **')
+#            print('** 未回答 **', end=',')
+#    print()
+    print(message)
     return result
 
 if __name__ == '__main__':
