@@ -15,18 +15,16 @@ def main():
             n_col = int(csvFileName.split('_')[4])
             n_row = int(csvFileName.split('_')[5])
 
-#            print('n_col' + str(n_col))
-#            print('n_row' + str(n_row))
             resultLine = changeMark.changeMarkToStr(resultJpgFile,n_col,n_row,message)
             if not resultLine == 'error':
                 writer.writerows(resultLine)
                 outputCsvFile.close()
             else:
                 with open('result/err.txt',mode='a',newline="") as errTxt:
-                    errTxt.write('err:マークシートが読めなかった,    FileName=' + resultJpgFile)
+                    errTxt.writerows('err:マークシートが読めなかった,    FileName=' + resultJpgFile)
         else:
             with open('result/err.txt',mode='a',newline="") as errTxt:
-                errTxt.write('err:QRコードが読めなかった,    FileName=' + resultJpgFile)
+                errTxt.writerows('err:QRコードが読めなかった,    FileName=' + resultJpgFile)
 
 if __name__ =='__main__':
     main()
