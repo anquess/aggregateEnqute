@@ -91,8 +91,15 @@ def changeMarkToStr(scanFilePath, n_col, n_row, message):
             ### NumPyで各マーク領域の画像の合計値を求める
             area_sum.append(np.sum(tmp_img[:,col*100:(col+1)*100]))
 
-        ### 画像領域の合計値が，中央値の3倍以上かどうかで判断
-        result.append(area_sum > np.median(area_sum) * 3)
+        ### 画像領域の合計値が，中央値の3倍～200倍以上かどうかで判断
+#        print(str(row))
+#        print('medidan=' + str(np.median(area_sum)))
+#        print('max=' + str(np.max(area_sum)))
+        ressss = (area_sum > np.median(area_sum) * 3)
+        if np.sum(ressss == True) > 1:
+            ressss = (area_sum > np.max(area_sum) * 0.2)
+        result.append(ressss)
+
     for x in range(len(result)):
         res = np.where(result[x]==True)[0]+1
         if len(res)>1:
