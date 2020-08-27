@@ -49,17 +49,10 @@ def changeMarkToStr(scanFilePath, n_col, n_row, message):
             topY_error = sorted(loc[0])[1] - sorted(loc[0])[0]
             bottomY_error = sorted(loc[0])[-1] - sorted(loc[0])[-2]
 
-#            print('top_x=' + str(topX_error))
-#            print('bottom_x=' + str(bottomX_error))
-#            print('top_y=' + str(topY_error))
-#            print('bottom_y=' + str(bottomY_error))
             if (topX_error < 5 and bottomX_error < 5 and topY_error < 5 and bottomY_error < 5):
-#                print('threshold=' + str(threshold))
                 img = img[mark_area['top_y']:mark_area['bottom_y'],mark_area['top_x']:mark_area['bottom_x']]
                 break
-        except ValueError as identifier:
-            continue
-        except KeyError as identifier:
+        except:
             continue
 
     # 次に，この後の処理をしやすくするため，切り出した画像をマークの
@@ -100,22 +93,15 @@ def changeMarkToStr(scanFilePath, n_col, n_row, message):
 
         ### 画像領域の合計値が，中央値の3倍以上かどうかで判断
         result.append(area_sum > np.median(area_sum) * 3)
-#    print(message, end=',')
     for x in range(len(result)):
         res = np.where(result[x]==True)[0]+1
         if len(res)>1:
-#            print('Q%d: ' % (x+1) +str(res)+ ' ## 複数回答 ##')
             message.append(' ## 複数回答 ##')
-#            print(str(res) + ' ## 複数回答 ##', end=',')
         elif len(res)==1:
-#            print('Q%d: ' % (x+1) +str(res))
             message.append(res[0])
-#            print(str(res) , end=',')
         else:
-#            print('Q%d: ** 未回答 **' % (x+1))
             message.append('** 未回答 **')
-#            print('** 未回答 **', end=',')
-#    print()
+    message.insert(0,scanFilePath)
     print(message)
     return result
 
