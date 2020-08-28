@@ -34,7 +34,7 @@ def changeMarkToStr(scanFilePath, n_col, n_row, message):
     margin_top = 1 # 上余白行数
     margin_bottom = 0 # 下余白行数
  
-    for threshold in [0.8, 0.75, 0.7, 0.65, 0.6, 0.55, 0.5, 0.45]:
+    for threshold in [0.7, 0.65, 0.6]:
     
         loc = np.where( res >= threshold)
         mark_area={}
@@ -48,9 +48,9 @@ def changeMarkToStr(scanFilePath, n_col, n_row, message):
             bottomX_error = sorted(loc[1])[-1] - sorted(loc[1])[-2]
             topY_error = sorted(loc[0])[1] - sorted(loc[0])[0]
             bottomY_error = sorted(loc[0])[-1] - sorted(loc[0])[-2]
+            img = img[mark_area['top_y']:mark_area['bottom_y'],mark_area['top_x']:mark_area['bottom_x']]
 
-            if (topX_error < 5 and bottomX_error < 5 and topY_error < 5 and bottomY_error < 5):
-                img = img[mark_area['top_y']:mark_area['bottom_y'],mark_area['top_x']:mark_area['bottom_x']]
+            if (topX_error < 5 and bottomX_error < 5 and topY_error < 5 and bottomY_error < 5):    
                 break
         except:
             continue
@@ -92,12 +92,16 @@ def changeMarkToStr(scanFilePath, n_col, n_row, message):
             area_sum.append(np.sum(tmp_img[:,col*100:(col+1)*100]))
 
         ### 画像領域の合計値が，中央値の3倍～200倍以上かどうかで判断
-#        print(str(row))
-#        print('medidan=' + str(np.median(area_sum)))
-#        print('max=' + str(np.max(area_sum)))
+    #    print(str(row))
+    #    print('medidan=' + str(np.median(area_sum)))
+    #    print('max=' + str(np.max(area_sum)))
+    #    print('area_sum=' + str(area_sum))
+    #    print('np.median(area_sum)=' + str(np.median(area_sum)))
+
         ressss = (area_sum > np.median(area_sum) * 3)
+        # 上記条件だと複数条件を抽出しやすいため、最大値の半分以上を抽出
         if np.sum(ressss == True) > 1:
-            ressss = (area_sum > np.max(area_sum) * 0.2)
+            ressss = (area_sum > np.max(area_sum) * 0.5)
         result.append(ressss)
 
     for x in range(len(result)):
