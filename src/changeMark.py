@@ -34,7 +34,7 @@ def changeMarkToStr(scanFilePath, n_col, n_row, message):
     margin_top = 1 # 上余白行数
     margin_bottom = 0 # 下余白行数
  
-    for threshold in [0.7, 0.65, 0.6]:
+    for threshold in [0.8, 0.75, 0.7, 0.65, 0.6]:
     
         loc = np.where( res >= threshold)
         mark_area={}
@@ -91,14 +91,10 @@ def changeMarkToStr(scanFilePath, n_col, n_row, message):
             ### NumPyで各マーク領域の画像の合計値を求める
             area_sum.append(np.sum(tmp_img[:,col*100:(col+1)*100]))
 
-        ### 画像領域の合計値が，中央値の3倍～200倍以上かどうかで判断
-    #    print(str(row))
-    #    print('medidan=' + str(np.median(area_sum)))
-    #    print('max=' + str(np.max(area_sum)))
-    #    print('area_sum=' + str(area_sum))
-    #    print('np.median(area_sum)=' + str(np.median(area_sum)))
-
-        ressss = (area_sum > np.median(area_sum) * 3)
+        ### 画像領域の合計値が，平均値の4倍以上かどうかで判断
+        ### 実際にマークを縫っている場合、4.9倍から6倍　全く塗っていないので3倍があった
+        ### 中央値の3倍だと、0が続いたときに使えない
+        ressss = (area_sum > np.average(area_sum) * 4)
         # 上記条件だと複数条件を抽出しやすいため、最大値の半分以上を抽出
         if np.sum(ressss == True) > 1:
             ressss = (area_sum > np.max(area_sum) * 0.5)
@@ -107,14 +103,14 @@ def changeMarkToStr(scanFilePath, n_col, n_row, message):
     for x in range(len(result)):
         res = np.where(result[x]==True)[0]+1
         if len(res)>1:
-            message.append(' ## 複数回答 ##')
+            message.append('multi answer:' + str(res))
         elif len(res)==1:
             message.append(res[0])
         else:
-            message.append('** 未回答 **')
+            message.append('None')
     message.insert(0,scanFilePath)
     print(message)
-    return result
+    return message
 
 if __name__ == '__main__':
     import sys
