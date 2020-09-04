@@ -4,6 +4,6 @@ img/enquete/
 img/temp/
 img/res.png
 src/__pycache__/*
-src/dist/*
-src/build/*
-src/*.spec
+*dist/*
+*build/*
+*.spec
