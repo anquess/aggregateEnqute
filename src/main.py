@@ -3,6 +3,7 @@ def main():
     import csv
     import glob
     import qrCodeRead
+    import os
     
     resultJpgFiles = glob.glob('img\\enquete\\*.jpg')
     
@@ -14,6 +15,8 @@ def main():
             n_col = int(qrMessage.split('_')[4])
             n_row = int(qrMessage.split('_')[5])
 
+            if not os.path.isdir('result'):
+                os.mkdir('result')
             with open('result/' + enqueteId + '.csv',mode='a',newline="")as f:
 
                 writer = csv.writer(f)
