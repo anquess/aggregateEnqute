@@ -59,9 +59,13 @@ def changeMarkToStr(scanFilePath, n_col, n_row, message):
     # 列数・行数の整数倍のサイズになるようリサイズします。
     # ここでは，列数・行数の100倍にしています。
     # なお，行数をカウントする際には，マーク領域からマーカーまでの余白も考慮した行数にします。
-
     n_row = n_row + margin_top + margin_bottom
     img = cv2.resize(img, (n_col*100, n_row*100))
+    
+    imagearray = np.zeros((img.shape[0],img.shape[1]),np.uint8)
+    for col in range(0,n_col+1):
+        count = np.array([[max(col*100 - 48 ,0),100],[col*100 + 48 , 100],[max(col*100- 48,0),n_row*100],[col*100 + 48,n_row*100]])
+        cv2.fillPoly(img, pts=[count], color=(255,255))
 
     ### ブラーをかける
     img = cv2.GaussianBlur(img,(5,5),0)
