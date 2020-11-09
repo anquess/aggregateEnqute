@@ -39,9 +39,9 @@ def changeMarkToStr(scanFilePath, n_col, n_row, message):
         loc = np.where( res >= threshold)
         mark_area={}
         try:
-            mark_area['top_x']= sorted(loc[1])[0]
+            mark_area['top_x']= sorted(loc[1])[0]+10
             mark_area['top_y']= sorted(loc[0])[0]
-            mark_area['bottom_x']= sorted(loc[1])[-1]
+            mark_area['bottom_x']= sorted(loc[1])[-1]-15
             mark_area['bottom_y']= sorted(loc[0])[-1]
 
             topX_error = sorted(loc[1])[1] - sorted(loc[1])[0]
@@ -54,6 +54,9 @@ def changeMarkToStr(scanFilePath, n_col, n_row, message):
                 break
         except:
             continue
+    
+    height, width = img.shape[:2]
+    cv2.imwrite('img/res2.png',img)
 
     # 次に，この後の処理をしやすくするため，切り出した画像をマークの
     # 列数・行数の整数倍のサイズになるようリサイズします。
@@ -64,14 +67,17 @@ def changeMarkToStr(scanFilePath, n_col, n_row, message):
     
     imagearray = np.zeros((img.shape[0],img.shape[1]),np.uint8)
     for col in range(0,n_col+1):
-        count = np.array([[max(col*100 - 48 ,0),100],[col*100 + 48 , 100],[max(col*100- 48,0),n_row*100],[col*100 + 48,n_row*100]])
+        count = np.array([[max(col*100 - 30 ,0),100],[col*100 + 30 , 100],[max(col*100 - 30 ,0),n_row*100],[col*100 + 30 ,n_row*100]])
         cv2.fillPoly(img, pts=[count], color=(255,255))
 
     ### ブラーをかける
-    img = cv2.GaussianBlur(img,(5,5),0)
-
+    
+#    img = cv2.GaussianBlur(img,(1,1),0)
+    img = cv2.medianBlur(img,3)
+    cv2.imwrite('img/res3.png',img)
     ### 50を閾値として2値化
-    res, img = cv2.threshold(img, 50, 255, cv2.THRESH_BINARY+cv2.THRESH_OTSU)
+#    res, img = cv2.threshold(img, 50, 255, cv2.THRESH_BINARY+cv2.THRESH_OTSU)
+    res, img = cv2.threshold(img, 0, 255, cv2.THRESH_OTSU)
 
     ### 白黒反転
     img = 255 - img
@@ -80,8 +86,7 @@ def changeMarkToStr(scanFilePath, n_col, n_row, message):
     # マークの認識
 
     ### 結果を入れる配列を用意
-    result = []
-    
+    area_num = []
     ### 行ごとの処理(余白行を除いて処理を行う)
     for row in range(margin_top, n_row - margin_bottom):
         
@@ -94,18 +99,22 @@ def changeMarkToStr(scanFilePath, n_col, n_row, message):
 
             ### NumPyで各マーク領域の画像の合計値を求める
             area_sum.append(np.sum(tmp_img[:,col*100:(col+1)*100]))
+        area_num.append(area_sum)
 
-        ### 画像領域の合計値が，平均値の4倍以上かどうかで判断
-        ### 実際にマークを縫っている場合、4.9倍から6倍　全く塗っていないので3倍があった
-        ### 中央値の3倍だと、0が続いたときに使えない
-        ressss = (area_sum > np.average(area_sum) * 4)
-        # 上記条件だと複数条件を抽出しやすいため、最大値の半分以上を抽出
-        if np.sum(ressss == True) > 1:
-            ressss = (area_sum > np.max(area_sum) * 0.5)
-        result.append(ressss)
+    ### 画像領域の合計値が，平均値の4倍以上かどうかで判断
+    ### 実際にマークを縫っている場合、4.9倍から6倍　全く塗っていないので3倍があった
+    ### 中央値の3倍だと、0が続いたときに使えない
+    result = []
+    for row_num in area_num:
+        print(row_num)
+        row_result = [ num > np.max(area_num)*0.2 and num > np.average(row_num)*4 and num > 20000 for num in row_num ]
+        print(row_result)
+        result.append(row_result)
+
+    
 
     for x in range(len(result)):
-        res = np.where(result[x]==True)[0]+1
+        res = np.where(result[x])[0]+1
         if len(res)>1:
             message.append('multi answer:' + str(res))
         elif len(res)==1:
@@ -113,7 +122,6 @@ def changeMarkToStr(scanFilePath, n_col, n_row, message):
         else:
             message.append('None')
     message.insert(0,scanFilePath)
-    print(message)
     return message
 
 if __name__ == '__main__':
