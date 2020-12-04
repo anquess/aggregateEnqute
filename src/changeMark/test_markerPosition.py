@@ -5,7 +5,7 @@ from markerPosition import MarkerPosition
 
 class TestMarkerPosition(object):
     def setup_method(self, method):
-        self.pos = MarkerPosition(2, 2)
+        self.pos = MarkerPosition(2, 2, 1, 1)
     
     def teardown_method(self, method):
         del self.pos
@@ -15,12 +15,10 @@ class TestMarkerPosition(object):
             self.pos.append(1, '1')
 
     def test_get_center(self):
-        self.pos.append(1, 1)
         self.pos.append(3, 9)
         assert self.pos.get_center() == [2 , 5]
     
     def test_is_near_pos_true(self):
-        self.pos.append(1, 1)
         self.pos.append(3, 9)
         assert self.pos.is_near_pos(3, 6)
 
