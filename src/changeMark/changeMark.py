@@ -84,7 +84,29 @@ def cut_out_img(img, marker_postions) -> numpy.ndarray:
     mark_area['bottom_y'] = marker_postions[-1][1]
 
     return img[mark_area['top_y']:mark_area['bottom_y'],mark_area['top_x']:mark_area['bottom_x']]
-    
+
+def optimization_for_mark(img, n_row, n_col, margin_top, margin_bottom) -> numpy.ndarray:
+    """マーク範囲で切り出したimg画像をアンケートしやすい形
+       縦横サイズ変更　(100 x n_col)    x   (100 x n_row)
+       ぼかして、2値化、白黒反転
+    Args:
+        img (image): マーク範囲で切り出した画像
+        n_row ([type]): マークシートの行数
+        n_col ([type]): マークシートの列数
+        margin_top ([type]): 上部の空白行の数
+        margin_bottom ([type]): 下部の空白行の数
+
+    Returns:
+        numpy.ndarray: 最適化された画像
+    """
+    n_row = n_row + margin_top + margin_bottom
+    img = cv2.resize(img, (n_col*100, n_row*100))
+    ### ブラーをかける
+    img = cv2.medianBlur(img,3)
+    ### 50を閾値として2値化
+    res, img = cv2.threshold(img, 0, 255, cv2.THRESH_OTSU)
+    ### 白黒反転
+    return 255 -img
 
 def changeMarkToStr(scanFilePath, n_col, n_row, message):
     """マークシートの読み取り、結果をFalse,Trueの2次元配列で返す
@@ -102,36 +124,10 @@ def changeMarkToStr(scanFilePath, n_col, n_row, message):
 
     img = cut_out_img(img, marker_postions)
 
-    cv2.imwrite('img/res2.png',img)
-
-    # 次に，この後の処理をしやすくするため，切り出した画像をマークの
-    # 列数・行数の整数倍のサイズになるようリサイズします。
-    # ここでは，列数・行数の100倍にしています。
-    # なお，行数をカウントする際には，マーク領域からマーカーまでの余白も考慮した行数にします。
-    height, width = img.shape[:2]
     margin_top = settings.margin_top
     margin_bottom = settings.margin_bottom
 
-    n_row = n_row + margin_top + margin_bottom
-    img = cv2.resize(img, (n_col*100, n_row*100))
-    
-    imagearray = numpy.zeros((img.shape[0],img.shape[1]),numpy.uint8)
-    for col in range(0,n_col+1):
-        count = numpy.array([[max(col*100 - 30 ,0),100],[col*100 + 30 , 100],[max(col*100 - 30 ,0),n_row*100],[col*100 + 30 ,n_row*100]])
-        cv2.fillPoly(img, pts=[count], color=(255,255))
-
-    ### ブラーをかける
-    
-#    img = cv2.GaussianBlur(img,(1,1),0)
-    img = cv2.medianBlur(img,3)
-    cv2.imwrite('img/res3.png',img)
-    ### 50を閾値として2値化
-#    res, img = cv2.threshold(img, 50, 255, cv2.THRESH_BINARY+cv2.THRESH_OTSU)
-    res, img = cv2.threshold(img, 0, 255, cv2.THRESH_OTSU)
-
-    ### 白黒反転
-    img = 255 - img
-    cv2.imwrite('img/res.png',img)
+    img = optimization_for_mark(img, n_row, n_col, margin_top, margin_bottom)
 
     # マークの認識
 
@@ -156,12 +152,12 @@ def changeMarkToStr(scanFilePath, n_col, n_row, message):
     ### 中央値の3倍だと、0が続いたときに使えない
     result = []
     for row_num in area_num:
-        print(row_num)
-        row_result = [ num > numpy.max(area_num)*0.2 and num > numpy.average(row_num)*4 and num > 20000 for num in row_num ]
-        print(row_result)
-        result.append(row_result)
+        row_result = [ num > numpy.max(area_num)*0.2 and num > numpy.average(row_num)*4 and num > 5000 for num in row_num ]
 
-    
+        logger.info(row_num)
+        logger.info(row_result)
+
+        result.append(row_result)
 
     for x in range(len(result)):
         res = numpy.where(result[x])[0]+1
@@ -186,9 +182,9 @@ if __name__ == '__main__':
                 n_row = int(args[2].split('_')[5])
                 changeMarkToStr(args[1],n_col,n_row)
             else:
-                print('[ERROR]QRコードメッセージがおかしいです：' + args[2])
+                logger.error('QRコードメッセージがおかしいです：' + args[2])
 
         elif args[1][len(args[1])-4:] == '.jpg':
-            print('[ERROR]' + args[1] + 'JPEGファイルを指定してください')
+            logger.error(args[1] + 'JPEGファイルを指定してください')
         else:
-            print('[ERROR]' + args[1] + 'というファイルはありません')
+            logger.error(args[1] + 'というファイルはありません')
