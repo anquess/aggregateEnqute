@@ -2,9 +2,11 @@
 result/*
 img/enquete/
 img/temp/
-img/res.png
-src/__pycache__/*
+img/res*.png
 *dist/*
 *build/*
 *.spec
 venv/
+src/__pycache__/*
+src/*/__pycache__/*
+

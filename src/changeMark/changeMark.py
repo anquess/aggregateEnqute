@@ -1,3 +1,88 @@
+import logging
+
+import numpy
+import cv2
+
+import settings
+
+
+handler = logging.FileHandler('result/err.txt', encoding='utf-8')
+handler.setFormatter(logging.Formatter("%(asctime)s %(levelname)8s %(name)s %(message)s"))
+
+logger = logging.getLogger()
+logger.addHandler(handler)
+logger = logging.getLogger(__name__)
+
+
+class NotCutOutException(Exception):
+    pass
+
+def get_angle(res, w, h):
+    loc = numpy.where( res >= 0.8 )
+    square_pt = []
+    temp_pt = []
+    for pt in zip(*loc[::-1]):
+        print('pt', pt)
+        if len(temp_pt) == 0 or (abs(numpy.average(temp_pt[0], axis=0) - pt[0]) > w and abs(numpy.average(temp_pt[0], axis=1) - pt[1]) > h):
+            temp_pt[0].append(pt)
+        elif len(temp_pt) == 1 or (abs(numpy.average(temp_pt[1], axis=0) - pt[0]) > w and abs(numpy.average(temp_pt[1], axis=1) - pt[1]) > h):
+            temp_pt[1].append(pt)
+        elif len(temp_pt) == 2 or (abs(numpy.average(temp_pt[2], axis=0) - pt[0]) > w and abs(numpy.average(temp_pt[2], axis=1) - pt[1]) > h):
+            temp_pt[2].append(pt)
+        elif len(temp_pt) == 1 or (abs(numpy.average(temp_pt[3], axis=0) - pt[0]) > w and abs(numpy.average(temp_pt[3], axis=1) - pt[1]) > h):
+            temp_pt[3].append(pt)
+        else:
+            print("erro")
+
+def get_marker() -> numpy.ndarray:
+    """scan_dpi に合わせたmarkerを作成
+
+    Returns:
+        numpy.ndarray: markerの画像を配列化したもの
+    """
+    marker_dpi = settings.marker_dpi
+    scan_dpi = settings.scan_dpi
+    marker_file_path = settings.marker_file_path
+    
+    marker = cv2.imread(marker_file_path,0) 
+
+    # マーカーのサイズを変更
+    w, h = marker.shape[::-1]
+    return cv2.resize(marker, (int(h*scan_dpi/marker_dpi), int(w*scan_dpi/marker_dpi)))
+
+
+def cut_out(img, loc) -> list:
+    """markerに合わせて画像を切り出し
+
+    Args:
+        img (ndarry): 切り出したい画像
+        loc (array): マーカーの位置情報
+
+    Raises:
+        NotCutOutException: 
+
+    Returns:
+        list: [description]
+    """
+    mark_area={}
+    try:
+        mark_area['top_x'] = sorted(loc[1])[0] + 10
+        mark_area['top_y'] = sorted(loc[0])[0]
+        mark_area['bottom_x'] = sorted(loc[1])[-1] - 15
+        mark_area['bottom_y'] = sorted(loc[0])[-1]
+
+        topX_error = sorted(loc[1])[1] - sorted(loc[1])[0]
+        bottomX_error = sorted(loc[1])[-1] - sorted(loc[1])[-2]
+        topY_error = sorted(loc[0])[1] - sorted(loc[0])[0]
+        bottomY_error = sorted(loc[0])[-1] - sorted(loc[0])[-2]
+        if (topX_error < 5 and bottomX_error < 5 and topY_error < 5 and bottomY_error < 5):
+            return img[mark_area['top_y']:mark_area['bottom_y'],mark_area['top_x']:mark_area['bottom_x']]
+        else:
+            return img
+    except:
+        raise NotCutOutException('')
+    return img
+
 def changeMarkToStr(scanFilePath, n_col, n_row, message):
     """マークシートの読み取り、結果をFalse,Trueの2次元配列で返す
     Args:
@@ -7,50 +92,24 @@ def changeMarkToStr(scanFilePath, n_col, n_row, message):
     Returns:
         list: マークシートの読み取った結果　False,Trueの2次元配列
     """
-    ### n_col = 6 # 1行あたりのマークの数
-    ### n_row = 9 # マークの行数
-    import numpy as np
-    import cv2
-
-    ### マーカーの設定
-    marker_dpi = 120 # 画面解像度(マーカーサイズ)
-    scan_dpi = 200 # スキャン画像の解像度
-
-    # グレースケール (mode = 0)でファイルを読み込む
-    marker=cv2.imread('img/setting/marker.jpg',0) 
-
-    # マーカーのサイズを取得
-    w, h = marker.shape[::-1]
-
-    # マーカーのサイズを変更
-    marker = cv2.resize(marker, (int(h*scan_dpi/marker_dpi), int(w*scan_dpi/marker_dpi)))
+    marker = get_marker()
 
     ### スキャン画像を読み込む
     img = cv2.imread(scanFilePath,0)
-
     res = cv2.matchTemplate(img, marker, cv2.TM_CCOEFF_NORMED)
-
+    w, h = marker.shape[::-1]
+    get_angle(res, w, h)
     ## makerの3点から抜き出すのを繰り返す 抜き出すときの条件は以下の通り
-    margin_top = 1 # 上余白行数
-    margin_bottom = 0 # 下余白行数
- 
-    for threshold in [0.8, 0.75, 0.7, 0.65, 0.6]:
+    for threshold_percent in range(settings.threshold_start,
+     settings.threshold_stop, settings.threshold_step):
     
-        loc = np.where( res >= threshold)
-        mark_area={}
+        loc = numpy.where( res >= threshold_percent / 100)
         try:
-            mark_area['top_x']= sorted(loc[1])[0]+10
-            mark_area['top_y']= sorted(loc[0])[0]
-            mark_area['bottom_x']= sorted(loc[1])[-1]-15
-            mark_area['bottom_y']= sorted(loc[0])[-1]
-
-            topX_error = sorted(loc[1])[1] - sorted(loc[1])[0]
-            bottomX_error = sorted(loc[1])[-1] - sorted(loc[1])[-2]
-            topY_error = sorted(loc[0])[1] - sorted(loc[0])[0]
-            bottomY_error = sorted(loc[0])[-1] - sorted(loc[0])[-2]
-            img = img[mark_area['top_y']:mark_area['bottom_y'],mark_area['top_x']:mark_area['bottom_x']]
-
-            if (topX_error < 5 and bottomX_error < 5 and topY_error < 5 and bottomY_error < 5):    
+            img2 = cut_out(img, loc)
+            if img2 == img:
+                continue
+            else:
+                img = img2
                 break
         except:
             continue
@@ -62,12 +121,15 @@ def changeMarkToStr(scanFilePath, n_col, n_row, message):
     # 列数・行数の整数倍のサイズになるようリサイズします。
     # ここでは，列数・行数の100倍にしています。
     # なお，行数をカウントする際には，マーク領域からマーカーまでの余白も考慮した行数にします。
+    margin_top = settings.margin_top
+    margin_bottom = settings.margin_bottom
+
     n_row = n_row + margin_top + margin_bottom
     img = cv2.resize(img, (n_col*100, n_row*100))
     
-    imagearray = np.zeros((img.shape[0],img.shape[1]),np.uint8)
+    imagearray = numpy.zeros((img.shape[0],img.shape[1]),numpy.uint8)
     for col in range(0,n_col+1):
-        count = np.array([[max(col*100 - 30 ,0),100],[col*100 + 30 , 100],[max(col*100 - 30 ,0),n_row*100],[col*100 + 30 ,n_row*100]])
+        count = numpy.array([[max(col*100 - 30 ,0),100],[col*100 + 30 , 100],[max(col*100 - 30 ,0),n_row*100],[col*100 + 30 ,n_row*100]])
         cv2.fillPoly(img, pts=[count], color=(255,255))
 
     ### ブラーをかける
@@ -98,7 +160,7 @@ def changeMarkToStr(scanFilePath, n_col, n_row, message):
         for col in range(n_col):
 
             ### NumPyで各マーク領域の画像の合計値を求める
-            area_sum.append(np.sum(tmp_img[:,col*100:(col+1)*100]))
+            area_sum.append(numpy.sum(tmp_img[:,col*100:(col+1)*100]))
         area_num.append(area_sum)
 
     ### 画像領域の合計値が，平均値の4倍以上かどうかで判断
@@ -107,14 +169,14 @@ def changeMarkToStr(scanFilePath, n_col, n_row, message):
     result = []
     for row_num in area_num:
         print(row_num)
-        row_result = [ num > np.max(area_num)*0.2 and num > np.average(row_num)*4 and num > 20000 for num in row_num ]
+        row_result = [ num > numpy.max(area_num)*0.2 and num > numpy.average(row_num)*4 and num > 20000 for num in row_num ]
         print(row_result)
         result.append(row_result)
 
     
 
     for x in range(len(result)):
-        res = np.where(result[x])[0]+1
+        res = numpy.where(result[x])[0]+1
         if len(res)>1:
             message.append('multi answer:' + str(res))
         elif len(res)==1:

@@ -23,10 +23,10 @@ def qrCodeToStr(filePath):
         qr = cv2.QRCodeDetector()
         data, points, straight_qrcode = qr.detectAndDecode(img)
 
-        if points == '' :
+        if points is None :
             logger.warn('QRコードが見つかりません。,%s', filePath)
             return None
-        elif data == '':
+        elif len(data) == 0:
             logger.error('QRコードが解読できません。,%s', filePath)
             return None
         else:
