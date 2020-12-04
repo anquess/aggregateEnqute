@@ -32,7 +32,7 @@ def main():
                 writer = csv.writer(f)
                 resultLine = changeMark.changeMark.changeMarkToStr(resultJpgFile,n_col,n_row,personalId)
                 if not resultLine == 'error':
-                    print(resultLine)
+                    logger.info(resultLine)
                     writer.writerow(resultLine)
                 else:
                     logger.error('マークシートが読めなかった,' + resultJpgFile)
