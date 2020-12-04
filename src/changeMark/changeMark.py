@@ -1,11 +1,13 @@
 import logging
+import sys
+import os
 
 import numpy
 import cv2
 
 import settings
 from changeMark.markerPosition import MarkerPosition
-
+from changeMark.enquete_optimize import Enquete
 
 handler = logging.FileHandler('result/err.txt', encoding='utf-8')
 handler.setFormatter(logging.Formatter("%(asctime)s %(levelname)8s %(name)s %(message)s"))
@@ -14,99 +16,6 @@ logger = logging.getLogger()
 logger.addHandler(handler)
 logger = logging.getLogger(__name__)
 
-
-class NotCutOutException(Exception):
-    pass
-
-def get_marker_pos(img, marker) -> list:
-    """imgからmarkerの位置を探し、複数ある位置をリスト形式で返す
-
-    Args:
-        img ([image]):markerを探し先の画像 
-        marker ([image]): 探す画像
-
-    Returns:
-        list: [x, y]座標位置のリスト
-    """
-    res = cv2.matchTemplate(img, marker, cv2.TM_CCOEFF_NORMED)
-    w, h = marker.shape[::-1]
-
-    loc = numpy.where( res >= settings.threshold / 100)
-    square_pt = []
-    for pt in zip(*loc[::-1]):
-        if len(square_pt) == 0:
-            square_pt.append(MarkerPosition(w, h, pt[0], pt[1]))
-        else:
-            flg = False
-            for pos in square_pt:
-                if pos.is_near_pos(pt[0], pt[1]):
-                    pos.append(pt[0], pt[1])
-                    flg = True
-                    break
-            if not flg:
-                square_pt.append(MarkerPosition(w, h, pt[0], pt[1]))
-    center_postions = []
-    for center in square_pt:
-        center_postions.append(center.get_center())
-    return center_postions
-
-def get_marker_image() -> numpy.ndarray:
-    """scan_dpi に合わせたmarkerを作成
-
-    Returns:
-        numpy.ndarray: markerの画像を配列化したもの
-    """
-    marker_dpi = settings.marker_dpi
-    scan_dpi = settings.scan_dpi
-    marker_file_path = settings.marker_file_path
-    
-    marker = cv2.imread(marker_file_path,0) 
-
-    # マーカーのサイズを変更
-    w, h = marker.shape[::-1]
-    return cv2.resize(marker, (int(h*scan_dpi/marker_dpi), int(w*scan_dpi/marker_dpi)))
-
-def cut_out_img(img, marker_postions) -> numpy.ndarray:
-    """marker_positionsの範囲でimgを画像切り出す
-
-    Args:
-        img (image): 切り出す前の画像
-        marker_postions (list): 切り出す位置(4点)
-
-    Returns:
-        numpy.ndarray: 切り出した後の画像
-    """
-    marker_postions = numpy.sort(marker_postions, axis=0)
-    mark_area={}
-    mark_area['top_x'] = marker_postions[0][0]
-    mark_area['top_y'] = marker_postions[0][1]
-    mark_area['bottom_x'] = marker_postions[-1][0]
-    mark_area['bottom_y'] = marker_postions[-1][1]
-
-    return img[mark_area['top_y']:mark_area['bottom_y'],mark_area['top_x']:mark_area['bottom_x']]
-
-def optimization_for_mark(img, n_row, n_col, margin_top, margin_bottom) -> numpy.ndarray:
-    """マーク範囲で切り出したimg画像をアンケートしやすい形
-       縦横サイズ変更　(100 x n_col)    x   (100 x n_row)
-       ぼかして、2値化、白黒反転
-    Args:
-        img (image): マーク範囲で切り出した画像
-        n_row ([type]): マークシートの行数
-        n_col ([type]): マークシートの列数
-        margin_top ([type]): 上部の空白行の数
-        margin_bottom ([type]): 下部の空白行の数
-
-    Returns:
-        numpy.ndarray: 最適化された画像
-    """
-    n_row = n_row + margin_top + margin_bottom
-    img = cv2.resize(img, (n_col*100, n_row*100))
-    ### ブラーをかける
-    img = cv2.medianBlur(img,3)
-    ### 50を閾値として2値化
-    res, img = cv2.threshold(img, 0, 255, cv2.THRESH_OTSU)
-    ### 白黒反転
-    return 255 -img
 
 def changeMarkToStr(scanFilePath, n_col, n_row, message):
     """マークシートの読み取り、結果をFalse,Trueの2次元配列で返す
@@ -117,50 +26,86 @@ def changeMarkToStr(scanFilePath, n_col, n_row, message):
     Returns:
         list: マークシートの読み取った結果　False,Trueの2次元配列
     """
-    marker = get_marker_image()
-    img = cv2.imread(scanFilePath,0)
-
-    marker_postions = get_marker_pos(img, marker)
-
-    img = cut_out_img(img, marker_postions)
-
+    marker_img = get_marker_image()
+    enquete_img = cv2.imread(scanFilePath,0)
     margin_top = settings.margin_top
     margin_bottom = settings.margin_bottom
 
-    img = optimization_for_mark(img, n_row, n_col, margin_top, margin_bottom)
+    enquete = Enquete(enquete_img, marker_img, n_row, n_col, margin_top, margin_bottom)
+    img = enquete.optimization_for_mark()
 
-    # マークの認識
+    result_bool_list = get_marksheet_result_bool_list(img, n_row, n_col, margin_top, margin_bottom)
+    return result_bool_list_to_result_message(message, scanFilePath, result_bool_list)
 
-    ### 結果を入れる配列を用意
-    area_num = []
-    ### 行ごとの処理(余白行を除いて処理を行う)
-    for row in range(margin_top, n_row - margin_bottom):
-        
-        ### 処理する行だけ切り出す
-        tmp_img = img [row*100:(row+1)*100,]
-        area_sum = [] # 合計値を入れる配列
+def get_marker_image() -> numpy.ndarray:
+    """scan_dpi に合わせたmarkerを作成
 
-        ### 各マークの処理
-        for col in range(n_col):
+    Returns:
+        numpy.ndarray: markerの画像を配列化したもの
+    """
+    marker_dpi = settings.marker_dpi
+    scan_dpi = settings.scan_dpi
+    marker_file_path = settings.marker_file_path    
+    marker = cv2.imread(marker_file_path,0) 
+    w, h = marker.shape[::-1]
+    return cv2.resize(marker, (int(h*scan_dpi/marker_dpi), int(w*scan_dpi/marker_dpi)))
 
-            ### NumPyで各マーク領域の画像の合計値を求める
-            area_sum.append(numpy.sum(tmp_img[:,col*100:(col+1)*100]))
-        area_num.append(area_sum)
+def get_marksheet_result_bool_list(img, n_row, n_col, margin_top, margin_bottom) -> list:
+    """img(マークシート画像)から判定結果をboolの2次元リストで取得
 
-    ### 画像領域の合計値が，平均値の4倍以上かどうかで判断
-    ### 実際にマークを縫っている場合、4.9倍から6倍　全く塗っていないので3倍があった
-    ### 中央値の3倍だと、0が続いたときに使えない
+    Args:
+        img (image): マーカー範囲で切り出したマークシートの画像
+        n_row (int): マークシートの行数
+        n_col (int): マークシートの列数
+        margin_top (int): 上部の空白行の数
+        margin_bottom (int): 下部の空白行の数
+
+    Returns:
+        list: img(マークシート画像)から判定結果をboolの2次元リスト
+    """
+    area_num = get_marksheet_count_black(img, n_row, n_col, margin_top, margin_bottom)
     result = []
     for row_num in area_num:
         row_result = [ num > numpy.max(area_num)*0.2 and num > numpy.average(row_num)*4 and num > 5000 for num in row_num ]
+        result.append(row_result)
 
         logger.info(row_num)
         logger.info(row_result)
+    return result
 
-        result.append(row_result)
+def get_marksheet_count_black(img, n_row, n_col, margin_top, margin_bottom) -> list:
+    """マークシートの各セル内の黒く塗れたドット数を数えて、結果を2次元配列で返す
 
-    for x in range(len(result)):
-        res = numpy.where(result[x])[0]+1
+    Args:
+        img (image): マーカー範囲で切り出したマークシートの画像
+        n_row (int): マークシートの行数
+        n_col (int): マークシートの列数
+        margin_top (int): 上部の空白行の数
+        margin_bottom (int): 下部の空白行の数
+
+    Returns:
+        list: マークシートの各セル内の黒く塗れたドット数を数えた結果を2次元配列
+    """
+    area_num = []
+    for row in range(margin_top, n_row - margin_bottom):
+        tmp_img = img [row*100:(row+1)*100,]
+        area_sum = []
+        for col in range(n_col):
+            area_sum.append(numpy.sum(tmp_img[:,col*100:(col+1)*100]))
+        area_num.append(area_sum)
+    return area_num
+
+def result_bool_list_to_result_message(message,scanFilePath, result_bool_list) -> str:
+    """result_bool_list boolの2次元配列から、一次元のテキスト配列に変更
+       ex:
+        ['img\\enquete\\20201124131852703-015.jpg', 'TACC', '197', 'None', 'None']
+        ['img\\enquete\\20201124131852703-016.jpg', 'TACC', '197', 3, 1]
+
+    Returns:
+        str: 一次元のテキスト配列
+    """
+    for raw in range(len(result_bool_list)):
+        res = numpy.where(result_bool_list[raw])[0]+1
         if len(res)>1:
             message.append('multi answer:' + str(res))
         elif len(res)==1:
@@ -171,8 +116,6 @@ def changeMarkToStr(scanFilePath, n_col, n_row, message):
     return message
 
 if __name__ == '__main__':
-    import sys
-    import os
 
     args = sys.argv
     if 3 == len(args):
