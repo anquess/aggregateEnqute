@@ -10,6 +10,4 @@ scan_dpi = int(conf['markSheet']['scan_dpi'])
 margin_top = int(conf['markSheet']['margin_top'])
 margin_bottom = int(conf['markSheet']['margin_bottom'])
 
-threshold_start = int(conf['threshold']['start'])
-threshold_stop = int(conf['threshold']['stop'])
-threshold_step = int(conf['threshold']['step'])
+threshold = int(conf['marker']['threshold'])
