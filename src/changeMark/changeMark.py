@@ -4,6 +4,7 @@ import numpy
 import cv2
 
 import settings
+from changeMark.markerPosition import MarkerPosition
 
 
 handler = logging.FileHandler('result/err.txt', encoding='utf-8')
@@ -17,24 +18,39 @@ logger = logging.getLogger(__name__)
 class NotCutOutException(Exception):
     pass
 
-def get_angle(res, w, h):
-    loc = numpy.where( res >= 0.8 )
-    square_pt = []
-    temp_pt = []
-    for pt in zip(*loc[::-1]):
-        print('pt', pt)
-        if len(temp_pt) == 0 or (abs(numpy.average(temp_pt[0], axis=0) - pt[0]) > w and abs(numpy.average(temp_pt[0], axis=1) - pt[1]) > h):
-            temp_pt[0].append(pt)
-        elif len(temp_pt) == 1 or (abs(numpy.average(temp_pt[1], axis=0) - pt[0]) > w and abs(numpy.average(temp_pt[1], axis=1) - pt[1]) > h):
-            temp_pt[1].append(pt)
-        elif len(temp_pt) == 2 or (abs(numpy.average(temp_pt[2], axis=0) - pt[0]) > w and abs(numpy.average(temp_pt[2], axis=1) - pt[1]) > h):
-            temp_pt[2].append(pt)
-        elif len(temp_pt) == 1 or (abs(numpy.average(temp_pt[3], axis=0) - pt[0]) > w and abs(numpy.average(temp_pt[3], axis=1) - pt[1]) > h):
-            temp_pt[3].append(pt)
-        else:
-            print("erro")
+def get_marker_pos(img, marker) -> list:
+    """imgからmarkerの位置を探し、複数ある位置をリスト形式で返す
 
-def get_marker() -> numpy.ndarray:
+    Args:
+        img ([image]):markerを探し先の画像 
+        marker ([image]): 探す画像
+
+    Returns:
+        list: [x, y]座標位置のリスト
+    """
+    res = cv2.matchTemplate(img, marker, cv2.TM_CCOEFF_NORMED)
+    w, h = marker.shape[::-1]
+
+    loc = numpy.where( res >= settings.threshold / 100)
+    square_pt = []
+    for pt in zip(*loc[::-1]):
+        if len(square_pt) == 0:
+            square_pt.append(MarkerPosition(w, h, pt[0], pt[1]))
+        else:
+            flg = False
+            for pos in square_pt:
+                if pos.is_near_pos(pt[0], pt[1]):
+                    pos.append(pt[0], pt[1])
+                    flg = True
+                    break
+            if not flg:
+                square_pt.append(MarkerPosition(w, h, pt[0], pt[1]))
+    center_postions = []
+    for center in square_pt:
+        center_postions.append(center.get_center())
+    return center_postions
+
+def get_marker_image() -> numpy.ndarray:
     """scan_dpi に合わせたmarkerを作成
 
     Returns:
@@ -50,38 +66,25 @@ def get_marker() -> numpy.ndarray:
     w, h = marker.shape[::-1]
     return cv2.resize(marker, (int(h*scan_dpi/marker_dpi), int(w*scan_dpi/marker_dpi)))
 
-
-def cut_out(img, loc) -> list:
-    """markerに合わせて画像を切り出し
+def cut_out_img(img, marker_postions) -> numpy.ndarray:
+    """marker_positionsの範囲でimgを画像切り出す
 
     Args:
-        img (ndarry): 切り出したい画像
-        loc (array): マーカーの位置情報
-
-    Raises:
-        NotCutOutException: 
+        img (image): 切り出す前の画像
+        marker_postions (list): 切り出す位置(4点)
 
     Returns:
-        list: [description]
+        numpy.ndarray: 切り出した後の画像
     """
+    marker_postions = numpy.sort(marker_postions, axis=0)
     mark_area={}
-    try:
-        mark_area['top_x'] = sorted(loc[1])[0] + 10
-        mark_area['top_y'] = sorted(loc[0])[0]
-        mark_area['bottom_x'] = sorted(loc[1])[-1] - 15
-        mark_area['bottom_y'] = sorted(loc[0])[-1]
+    mark_area['top_x'] = marker_postions[0][0]
+    mark_area['top_y'] = marker_postions[0][1]
+    mark_area['bottom_x'] = marker_postions[-1][0]
+    mark_area['bottom_y'] = marker_postions[-1][1]
 
-        topX_error = sorted(loc[1])[1] - sorted(loc[1])[0]
-        bottomX_error = sorted(loc[1])[-1] - sorted(loc[1])[-2]
-        topY_error = sorted(loc[0])[1] - sorted(loc[0])[0]
-        bottomY_error = sorted(loc[0])[-1] - sorted(loc[0])[-2]
-        if (topX_error < 5 and bottomX_error < 5 and topY_error < 5 and bottomY_error < 5):
-            return img[mark_area['top_y']:mark_area['bottom_y'],mark_area['top_x']:mark_area['bottom_x']]
-        else:
-            return img
-    except:
-        raise NotCutOutException('')
-    return img
+    return img[mark_area['top_y']:mark_area['bottom_y'],mark_area['top_x']:mark_area['bottom_x']]
+    
 
 def changeMarkToStr(scanFilePath, n_col, n_row, message):
     """マークシートの読み取り、結果をFalse,Trueの2次元配列で返す
@@ -92,35 +95,20 @@ def changeMarkToStr(scanFilePath, n_col, n_row, message):
     Returns:
         list: マークシートの読み取った結果　False,Trueの2次元配列
     """
-    marker = get_marker()
-
-    ### スキャン画像を読み込む
+    marker = get_marker_image()
     img = cv2.imread(scanFilePath,0)
-    res = cv2.matchTemplate(img, marker, cv2.TM_CCOEFF_NORMED)
-    w, h = marker.shape[::-1]
-    get_angle(res, w, h)
-    ## makerの3点から抜き出すのを繰り返す 抜き出すときの条件は以下の通り
-    for threshold_percent in range(settings.threshold_start,
-     settings.threshold_stop, settings.threshold_step):
-    
-        loc = numpy.where( res >= threshold_percent / 100)
-        try:
-            img2 = cut_out(img, loc)
-            if img2 == img:
-                continue
-            else:
-                img = img2
-                break
-        except:
-            continue
-    
-    height, width = img.shape[:2]
+
+    marker_postions = get_marker_pos(img, marker)
+
+    img = cut_out_img(img, marker_postions)
+
     cv2.imwrite('img/res2.png',img)
 
     # 次に，この後の処理をしやすくするため，切り出した画像をマークの
     # 列数・行数の整数倍のサイズになるようリサイズします。
     # ここでは，列数・行数の100倍にしています。
     # なお，行数をカウントする際には，マーク領域からマーカーまでの余白も考慮した行数にします。
+    height, width = img.shape[:2]
     margin_top = settings.margin_top
     margin_bottom = settings.margin_bottom
 
